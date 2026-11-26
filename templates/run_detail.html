@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% set r = d['run'] %}{% set c = d['costs'] %}
+{% block body %}
+<div class="titlebar"><h1>{{ r['run_no'] }} <span class="badge {{ r['status'] }}">{{ r['status'] }}</span></h1><a class="btn" href="{{ url_for('runs') }}">All runs</a></div>
+<p>{{ r['product'] }} &middot; {{ r['batches'] }} batch(es) &middot; {{ r['txn_date'] }} &middot; batch no <code>{{ r['batch_no'] }}</code>{% if r['expiry'] %} &middot; best before {{ r['expiry'] }}{% endif %} &middot; by {{ r['user'] }}</p>
+
+<h2>Planned vs actual <small class="muted">(tolerance {{ d['tol'] }}%)</small></h2>
+<div class="scroll"><table><tr><th>Line</th><th>Planned</th><th>Actual</th><th>Variance</th><th>Cost (Rs)</th></tr>
+  <tr><td><b>Yield: good packets</b></td><td class="num">{{ fmt_qty(r['expected_m']) }}</td><td class="num">{{ fmt_qty(r['good_m']) }}</td><td>{{ m.flag(d['yield_var'], d['yield_flag']) }}</td><td></td></tr>
+  <tr><td>Wastage: damaged packs</td><td></td><td class="num">{{ fmt_qty(r['damaged_m']) }}</td><td></td><td></td></tr>
+  {% for l in d['lines'] %}<tr><td>{{ l['name'] }}</td><td class="num">{{ fmt_qty(l['planned_m']) }} {{ l['unit'] }}</td><td class="num">{{ fmt_qty(l['actual_m']) }} {{ l['unit'] }}</td>
+    <td>{{ m.flag(l['var'], l['flag']) }}</td><td class="num">{{ money(l['cost_paise']) }}</td></tr>{% endfor %}
+</table></div>
+
+<h2>Cost per packet</h2>
+<div class="scroll"><table>
+  <tr><td>Materials and packaging (weighted average cost)</td><td class="num">Rs {{ money(c['materials']) }}</td></tr>
+  {% for o in d['overheads'] %}<tr><td>{{ o['kind'] }}{% if o['note'] %} ({{ o['note'] }}){% endif %}</td><td class="num">Rs {{ money(o['amount_paise']) }}</td></tr>{% endfor %}
+  <tr class="tot"><td>Total run cost</td><td class="num">Rs {{ money(c['total']) }}</td></tr>
+  {% if c['cpp_paise'] is not none %}
+  <tr class="tot"><td>Cost per good packet ({{ c['good_packets'] }} packets)</td><td class="num">Rs {{ '%.2f'|format(c['cpp_paise'] / 100) }}</td></tr>
+  <tr><td>Selling price before tax</td><td class="num">Rs {{ money(r['price_paise']) }}</td></tr>
+  <tr><td>Margin per packet</td><td class="num">Rs {{ '%.2f'|format((r['price_paise'] - c['cpp_paise']) / 100) }} ({{ '%.1f'|format((r['price_paise'] - c['cpp_paise']) * 100 / r['price_paise']) }}%)</td></tr>{% endif %}
+</table></div>
+
+{% if r['status'] == 'posted' and user['role'] in ('admin', 'production') %}
+<div class="actions">
+  <form class="inline" method="post" action="{{ url_for('run_action', rid=r['id'], action='overhead') }}">{{ m.csrf() }}
+    <select name="kind"><option>Labour</option><option>Gas / power</option><option>Other</option></select>
+    <input class="sm" name="amount" placeholder="Rs" required><input name="note" placeholder="Note"><button>Add overhead</button></form>
+  <form class="inline" method="post" action="{{ url_for('run_action', rid=r['id'], action='reverse') }}" onsubmit="return confirm('Reverse this run and put the stock back?')">{{ m.csrf() }}
+    <input name="reason" placeholder="Reason" required><button class="danger">Reverse run</button></form>
+</div>{% endif %}
+
+<h2>Stock movements from this run</h2>
+<div class="scroll"><table><tr><th>Item</th><th>Source</th><th>Qty in</th><th>Qty out</th><th>Value (Rs)</th></tr>
+  {% for l in ledger %}<tr><td>{{ l['name'] }}</td><td>{{ l['source_type'] }}</td><td class="num">{{ fmt_qty(l['qty_m']) if l['qty_m'] > 0 else '' }}</td><td class="num">{{ fmt_qty(-l['qty_m']) if l['qty_m'] < 0 else '' }}</td><td class="num">{{ money(l['value_paise']) }}</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

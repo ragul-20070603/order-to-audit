@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<h1>Bills of materials</h1>
+<div class="tabs"><a href="{{ url_for('items') }}">Items</a><a href="{{ url_for('customers') }}">Customers</a><a href="{{ url_for('boms') }}" class="on">BOMs</a></div>
+<p class="muted">A BOM is the standard recipe for one batch. Several products can share one BOM. Quantities are in the item's stock unit.</p>
+{% for e in data %}{% set b = e['bom'] %}
+<div class="card">
+  <h2>{{ b['name'] }}</h2>
+  <p>Used by: {{ e['products'] | map(attribute='name') | join(', ') or 'no product yet' }}</p>
+  <form class="inline" method="post">{{ m.csrf() }}<input type="hidden" name="act" value="yield"><input type="hidden" name="bom" value="{{ b['id'] }}">
+    <label>Yield per batch (packets) <input class="sm" name="yield" value="{{ fmt_qty(b['yield_m']) }}"></label><button>Update yield</button></form>
+  <div class="scroll"><table><tr><th>Item</th><th>Qty per batch</th><th>Unit</th><th>Rule</th><th></th></tr>
+  {% for l in e['lines'] %}<tr><td>{{ l['name'] }}</td><td class="num">{{ fmt_qty(l['qty_m']) }}</td><td>{{ l['unit'] }}</td><td>{{ l['rule'] }}</td>
+    <td><form method="post" class="inline">{{ m.csrf() }}<input type="hidden" name="act" value="del_line"><input type="hidden" name="bom" value="{{ b['id'] }}"><input type="hidden" name="line" value="{{ l['id'] }}"><button class="danger">Remove</button></form></td></tr>{% endfor %}</table></div>
+  <form class="inline" method="post">{{ m.csrf() }}<input type="hidden" name="act" value="add_line"><input type="hidden" name="bom" value="{{ b['id'] }}">
+    <select name="item">{% for i in inputs %}<option value="{{ i['id'] }}">{{ i['name'] }} ({{ i['unit'] }})</option>{% endfor %}</select>
+    <input class="sm" name="qty" placeholder="Qty" required>
+    <select name="rule"><option value="manual">manual</option><option value="per_packet">per_packet</option></select><button>Add / update line</button></form>
+  <form class="inline" method="post">{{ m.csrf() }}<input type="hidden" name="act" value="assign"><input type="hidden" name="bom" value="{{ b['id'] }}">
+    <select name="product">{% for p in products %}<option value="{{ p['id'] }}">{{ p['name'] }}</option>{% endfor %}</select><button>Use this BOM for product</button></form>
+</div>{% endfor %}
+<h2>New BOM</h2>
+<form method="post" class="card">{{ m.csrf() }}<input type="hidden" name="act" value="create">
+  <div class="row"><label>Name <input name="name" required></label><label>Yield per batch <input name="yield" required></label>
+  <label>Assign to product <select name="product"><option value="">Later</option>{% for p in products %}<option value="{{ p['id'] }}">{{ p['name'] }}</option>{% endfor %}</select></label></div>
+  <button class="primary">Create BOM</button>
+</form>
+{% endblock %}

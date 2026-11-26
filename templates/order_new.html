@@ -1,0 +1,64 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<h1>New order</h1>
+<div id="status" class="flash" hidden></div>
+<div class="card">
+  <label>Customer
+    <select id="customer">{% for c in customers %}<option value="{{ c['id'] }}">{{ c['name'] }} ({{ c['type'] }}, {{ c['state'] }})</option>{% endfor %}</select></label>
+  {% for p in products %}
+  <div class="orderline">
+    <div><b>{{ p['name'] }}</b><br><small class="muted">Rs {{ money(p['price_paise']) }} per {{ p['unit'] }} + GST {{ '%g'|format(p['gst_bp'] / 100) }}%</small></div>
+    <div class="stepper">
+      <button type="button" data-d="-10">-10</button><button type="button" data-d="-1">-</button>
+      <input type="number" min="0" step="1" value="0" inputmode="numeric" data-item="{{ p['id'] }}" data-price="{{ p['price_paise'] }}">
+      <button type="button" data-d="1">+</button><button type="button" data-d="10">+10</button>
+    </div>
+  </div>{% endfor %}
+  <label>Note (optional) <input id="note"></label>
+  <p class="total">Order value before tax: Rs <b id="total">0.00</b></p>
+  <button id="submit" class="primary big">Submit order</button>
+  <p class="muted" id="queueinfo"></p>
+</div>
+<script>
+const CSRF = "{{ csrf_token() }}", KEY = "queued_orders";
+const $ = s => document.querySelector(s), inputs = [...document.querySelectorAll("input[data-item]")];
+const queue = () => JSON.parse(localStorage.getItem(KEY) || "[]");
+const saveQueue = q => localStorage.setItem(KEY, JSON.stringify(q));
+function say(msg, cls) { const s = $("#status"); s.hidden = false; s.className = "flash " + cls; s.textContent = msg; }
+function recalc() {
+  const paise = inputs.reduce((a, i) => a + Math.round((+i.value || 0) * +i.dataset.price), 0);
+  $("#total").textContent = (paise / 100).toLocaleString("en-IN", {minimumFractionDigits: 2});
+  const n = queue().length; $("#queueinfo").textContent = n ? n + " order(s) saved on this phone, waiting for network." : "";
+}
+document.querySelectorAll(".stepper button").forEach(b => b.onclick = () => {
+  const i = b.parentElement.querySelector("input"); i.value = Math.max(0, (+i.value || 0) + +b.dataset.d); recalc();
+});
+inputs.forEach(i => i.oninput = recalc);
+async function send(o) {
+  const r = await fetch("/api/orders", {method: "POST", headers: {"Content-Type": "application/json", "X-CSRF": CSRF}, body: JSON.stringify(o)});
+  return {status: r.status, body: await r.json()};     // throws on network failure or a login redirect
+}
+async function flush() {
+  const left = [];
+  for (const o of queue()) {
+    try { const r = await send(o); if (r.status >= 500) left.push(o); else if (r.body.error) say("Saved order was rejected: " + r.body.error, "err"); else say("Order " + r.body.order_no + " sent.", "ok"); }
+    catch (e) { left.push(o); }
+  }
+  saveQueue(left); recalc();
+}
+$("#submit").onclick = async () => {
+  const lines = inputs.filter(i => +i.value > 0).map(i => ({item_id: i.dataset.item, qty: i.value}));
+  if (!lines.length) return say("Add a quantity first.", "err");
+  const o = {client_ref: crypto.randomUUID(), customer_id: $("#customer").value, lines, note: $("#note").value};
+  try {
+    const r = await send(o);
+    if (r.body.error) return say(r.body.error, "err");
+    say("Order " + r.body.order_no + " submitted.", "ok"); inputs.forEach(i => i.value = 0); recalc();
+  } catch (e) {
+    saveQueue([...queue(), o]); say("No network. Order saved on this phone and will be sent automatically.", "warn");
+    inputs.forEach(i => i.value = 0); recalc();
+  }
+};
+window.addEventListener("online", flush); flush(); recalc();
+</script>
+{% endblock %}

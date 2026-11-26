@@ -1,0 +1,16 @@
+{% macro csrf() %}<input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro table(cols, rows) %}
+<div class="scroll"><table>
+<thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+<tbody>
+{% for r in rows %}
+<tr class="{{ 'tot' if r and r[0] == 'Total' }}">
+  {% for v in r %}<td class="{{ 'num' if v is number }} {{ 'flagcell' if v == 'FLAG' }}">{{ v if v is not none else '' }}</td>{% endfor %}
+</tr>
+{% else %}<tr><td colspan="{{ cols|length }}" class="muted">Nothing here yet</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endmacro %}
+
+{% macro flag(var, is_flag) %}<span class="{{ 'flag' if is_flag else 'okv' }}">{{ '%+.2f'|format(var) }}%{% if is_flag %} &#9888; flagged{% endif %}</span>{% endmacro %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<h1>New production run</h1>
+<form class="filters" method="get">
+  <label>Product <select name="product" onchange="this.form.submit()">{% for p in products %}<option value="{{ p['id'] }}" {{ 'selected' if p['id'] == pid }}>{{ p['name'] }}</option>{% endfor %}</select></label>
+  <label>Batches <input type="number" name="batches" min="1" value="{{ batches }}" class="sm"></label>
+  <button>Load BOM</button>
+</form>
+<form method="post" class="card">{{ m.csrf() }}
+  <input type="hidden" name="product" value="{{ pid }}"><input type="hidden" name="batches" value="{{ batches }}">
+  <p>BOM: <b>{{ bom['name'] }}</b>. Expected output for {{ batches }} batch(es): <b>{{ fmt_qty(bom['yield_m'] * batches) }}</b> packets.</p>
+  <div class="scroll"><table><tr><th>Material</th><th>Standard (BOM)</th><th>Actually issued</th><th>Unit</th><th>In stock</th></tr>
+  {% for l in lines %}<tr><td>{{ l['name'] }}</td><td class="num">{{ l['planned'] }} {{ l['unit'] }}</td>
+    {% if l['rule'] == 'manual' %}
+    <td><input class="sm" name="qty_{{ l['item_id'] }}" value="{{ l['planned'] }}" required></td>
+    <td><select name="unit_{{ l['item_id'] }}">{% for u in l['units'] %}<option {{ 'selected' if u == l['unit'] }}>{{ u }}</option>{% endfor %}</select></td>
+    {% else %}<td colspan="2" class="muted">Automatic: good packets + damaged</td>{% endif %}
+    <td class="num">{{ fmt_qty(l['on_hand']) }} {{ l['unit'] }}</td></tr>{% endfor %}
+  </table></div>
+  <div class="row">
+    <label>Good packets produced <input name="good" value="{{ expected }}" required inputmode="numeric"></label>
+    <label>Damaged pouches / packs <input name="damaged" value="0" inputmode="numeric"></label>
+  </div>
+  <label>Note <input name="note"></label>
+  <button class="primary big">Save run and update stock</button>
+</form>
+{% endblock %}

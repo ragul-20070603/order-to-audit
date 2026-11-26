@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<div class="titlebar"><h1>{{ o['order_no'] }} <span class="badge {{ o['status'] }}">{{ o['status'] }}</span></h1><a class="btn" href="{{ url_for('orders') }}">All orders</a></div>
+<p>{{ o['cname'] }} &middot; {{ o['state'] }} &middot; GSTIN {{ o['gstin'] or 'none' }} &middot; taken by {{ o['salesman'] }} on {{ o['created_at'][:16] }}{% if o['note'] %} &middot; note: {{ o['note'] }}{% endif %}</p>
+
+<form method="post" action="{{ url_for('order_action', oid=o['id'], action='edit') }}">{{ m.csrf() }}
+<div class="scroll"><table>
+  <tr><th>Product</th><th>Qty</th><th>Price (Rs)</th><th>In stock</th><th>Reserved for others</th><th>Available</th><th>Stock check</th></tr>
+  {% for c in checks %}<tr>
+    <td>{{ c['name'] }}</td>
+    <td>{% if o['status'] == 'submitted' %}<input class="sm" name="q_{{ c['id'] }}" value="{{ fmt_qty(c['qty_m']) }}">{% else %}{{ fmt_qty(c['qty_m']) }}{% endif %}</td>
+    <td>{% if o['status'] == 'submitted' %}<input class="sm" name="p_{{ c['id'] }}" value="{{ money(c['price_paise']).replace(',', '') }}">{% else %}{{ money(c['price_paise']) }}{% endif %}</td>
+    <td class="num">{{ fmt_qty(c['on_hand']) }}</td><td class="num">{{ fmt_qty(c['reserved']) }}</td><td class="num">{{ fmt_qty([c['available'], 0]|max) }}</td>
+    <td>{% if c['shortage'] %}<span class="flag">Short by {{ fmt_qty(c['shortage']) }}</span>{% else %}<span class="okv">Covered</span>{% endif %}</td>
+  </tr>{% endfor %}
+</table></div>
+{% if o['status'] == 'submitted' %}<p><button>Save changes</button> <small class="muted">Set a quantity to 0 to remove a line. Changes are written to the audit trail.</small></p>{% endif %}
+</form>
+
+<div class="actions">
+{% if o['status'] == 'submitted' %}
+  <form method="post" action="{{ url_for('order_action', oid=o['id'], action='approve') }}">{{ m.csrf() }}<button class="primary">Approve</button></form>
+{% endif %}
+{% if o['status'] in ('submitted', 'approved') %}
+  <form method="post" action="{{ url_for('order_action', oid=o['id'], action='reject') }}" class="inline">{{ m.csrf() }}<input name="reason" placeholder="Reason" required><button class="danger">Reject</button></form>
+{% endif %}
+{% if o['status'] == 'approved' %}
+  <form method="post" action="{{ url_for('order_action', oid=o['id'], action='invoice') }}">{{ m.csrf() }}<button class="primary">Create GST invoice</button></form>
+{% endif %}
+{% if invoice %}<a class="btn primary" href="{{ url_for('invoice_detail', iid=invoice['id']) }}">Open invoice {{ invoice['inv_no'] }}</a>{% endif %}
+</div>
+{% endblock %}

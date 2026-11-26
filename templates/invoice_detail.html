@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<div class="titlebar"><h1>{{ inv['inv_no'] }} <span class="badge {{ inv['status'] }}">{{ inv['status'] }}</span></h1>
+  <span><a class="btn primary" href="{{ url_for('invoice_pdf_view', iid=inv['id']) }}" target="_blank">Download PDF</a>
+  <a class="btn" href="{{ wa }}" target="_blank" rel="noopener">Share on WhatsApp</a></span></div>
+<p>{{ inv['cname'] }} &middot; GSTIN {{ inv['gstin'] or 'none' }} &middot; {{ inv['inv_date'] }} &middot; place of supply {{ inv['place_of_supply'] }} &middot;
+  <b>{{ 'IGST (inter-state)' if inv['interstate'] else 'CGST + SGST (intra-state)' }}</b></p>
+<div class="scroll"><table>
+  <tr><th>Product</th><th>HSN</th><th>Qty</th><th>Rate</th><th>Taxable</th><th>GST %</th><th>CGST</th><th>SGST</th><th>IGST</th></tr>
+  {% for l in lines %}<tr><td>{{ l['name'] }}</td><td>{{ l['hsn'] }}</td><td class="num">{{ fmt_qty(l['qty_m']) }}</td><td class="num">{{ money(l['rate_paise']) }}</td>
+    <td class="num">{{ money(l['taxable_paise']) }}</td><td class="num">{{ '%g'|format(l['gst_bp'] / 100) }}</td>
+    <td class="num">{{ money(l['cgst_paise']) }}</td><td class="num">{{ money(l['sgst_paise']) }}</td><td class="num">{{ money(l['igst_paise']) }}</td></tr>{% endfor %}
+  <tr class="tot"><td colspan="4">Total</td><td class="num">{{ money(inv['taxable_paise']) }}</td><td></td><td class="num">{{ money(inv['cgst_paise']) }}</td><td class="num">{{ money(inv['sgst_paise']) }}</td><td class="num">{{ money(inv['igst_paise']) }}</td></tr>
+</table></div>
+<p class="total">Invoice total: Rs <b>{{ money(inv['total_paise']) }}</b> &middot; Outstanding: Rs <b>{{ money(due) }}</b></p>
+{% if cn %}<div class="flash warn">Cancelled by credit note {{ cn['cn_no'] }} on {{ cn['cn_date'] }}. Reason: {{ cn['reason'] }}</div>{% endif %}
+
+<h2>Payments</h2>
+<div class="scroll"><table><tr><th>Date</th><th>Mode</th><th>Reference</th><th>Amount (Rs)</th></tr>
+  {% for p in pays %}<tr><td>{{ p['pay_date'] }}</td><td>{{ p['mode'] }}</td><td>{{ p['ref'] or '' }}</td><td class="num">{{ money(p['amount_paise']) }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">No payments yet</td></tr>{% endfor %}</table></div>
+
+{% if user['role'] == 'admin' and inv['status'] != 'cancelled' %}
+<div class="actions">
+  {% if inv['status'] == 'issued' %}<form method="post" action="{{ url_for('invoice_action', iid=inv['id'], action='dispatch') }}">{{ m.csrf() }}<button class="primary">Record dispatch</button></form>{% endif %}
+  {% if due > 0 %}
+  <form method="post" class="inline" action="{{ url_for('invoice_action', iid=inv['id'], action='pay') }}">{{ m.csrf() }}
+    <input class="sm" name="amount" placeholder="Amount Rs" required>
+    <select name="mode"><option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Cheque</option></select>
+    <input name="ref" placeholder="Reference"><button>Record payment</button></form>{% endif %}
+  <form method="post" class="inline" action="{{ url_for('invoice_action', iid=inv['id'], action='cancel') }}" onsubmit="return confirm('Cancel this invoice with a credit note?')">{{ m.csrf() }}
+    <input name="reason" placeholder="Reason for cancelling" required><button class="danger">Cancel with credit note</button></form>
+</div>
+{% endif %}
+{% endblock %}

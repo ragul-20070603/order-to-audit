@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<h1>Masters</h1>
+<div class="tabs"><a href="{{ url_for('items') }}" class="{{ 'on' if what == 'items' }}">Items</a><a href="{{ url_for('customers') }}" class="{{ 'on' if what == 'customers' }}">Customers</a><a href="{{ url_for('boms') }}">BOMs</a></div>
+{{ m.table(cols, rows) }}
+<h2>Add {{ 'item' if what == 'items' else 'customer' }}</h2>
+{% if what == 'items' %}
+<form method="post" class="card">{{ m.csrf() }}
+  <div class="row">
+    <label>Code <input name="code" required></label><label>Name <input name="name" required></label>
+    <label>Kind <select name="kind"><option value="raw">Raw material</option><option value="pack">Packaging</option><option value="fg">Finished product</option></select></label>
+    <label>Stock unit <select name="unit">{% for u in units %}<option>{{ u }}</option>{% endfor %}</select></label>
+    <label>HSN <input name="hsn"></label><label>GST % <input name="gst" value="0"></label>
+    <label>Price Rs (finished only) <input name="price"></label><label>Shelf life days <input name="shelf"></label>
+    <label>Reorder level <input name="reorder"></label>
+    <label>BOM (finished only) <select name="bom"><option value="">None</option>{% for b in boms %}<option value="{{ b['id'] }}">{{ b['name'] }}</option>{% endfor %}</select></label>
+  </div>
+  <button class="primary">Add item</button>
+</form>
+{% else %}
+<form method="post" class="card">{{ m.csrf() }}
+  <div class="row">
+    <label>Name <input name="name" required></label>
+    <label>Type <select name="type"><option value="retailer">Retailer</option><option value="distributor">Distributor</option></select></label>
+    <label>GSTIN <input name="gstin"></label><label>State <input name="state" required></label>
+    <label>State code <input name="state_code" required placeholder="33"></label>
+    <label>Address <input name="address"></label><label>Phone <input name="phone"></label>
+  </div>
+  <button class="primary">Add customer</button>
+</form>
+{% endif %}
+{% endblock %}

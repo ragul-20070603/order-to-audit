@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<div class="titlebar"><h1>{{ title }}</h1>
+  {% for label, url in actions or [] %}<a class="btn primary" href="{{ url }}">{{ label }}</a>{% endfor %}</div>
+{% if intro %}<p class="muted">{{ intro }}</p>{% endif %}
+{% if filters %}
+<form class="filters" method="get">
+  <label>From <input type="date" name="from" value="{{ f }}"></label>
+  <label>To <input type="date" name="to" value="{{ t }}"></label>
+  {% if items %}<label>Item <select name="item"><option value="">All items</option>
+    {% for i in items %}<option value="{{ i['id'] }}" {{ 'selected' if item_id == i['id'] }}>{{ i['name'] }}</option>{% endfor %}</select></label>{% endif %}
+  <button>Apply</button>
+  <span class="exports">Export:
+    {% for fmt, label in [('xlsx','Excel'),('csv','CSV'),('pdf','PDF')] %}
+    <a class="btn" href="{{ url_for('report', key=key, fmt=fmt, **{'from': f, 'to': t, 'item': item_id or ''}) }}">{{ label }}</a>{% endfor %}</span>
+</form>
+{% endif %}
+{% if links %}<ul class="linklist">{% for label, url in links %}<li><a href="{{ url }}">{{ label }}</a></li>{% endfor %}</ul>{% endif %}
+{% for heading, cols, rows in tables or [] %}
+  {% if heading %}<h2>{{ heading }}</h2>{% endif %}
+  {{ m.table(cols, rows) }}
+{% endfor %}
+{% endblock %}

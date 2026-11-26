@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<h1>Today at the factory</h1>
+<div class="tiles">{% for label, v in tiles %}<div class="tile"><b>{{ v }}</b><span>{{ label }}</span></div>{% endfor %}</div>
+<div class="grid2">
+  <div><h2>Variance alerts <small class="muted">(tolerance {{ tol }}%)</small></h2>
+    {{ m.table(["Run", "Line", "Variance"], alerts) }}</div>
+  <div><h2>Cost per packet</h2>
+    {{ m.table(["Product", "Run", "Cost / packet (Rs)", "Price (Rs)", "Margin"], cost_rows) }}</div>
+</div>
+<h2>Stock levels</h2>
+{{ m.table(["Item", "Unit", "In stock", "Value (Rs)"], stock_rows) }}
+{% if low %}<h2>Below reorder level</h2>{{ m.table(["Item", "In stock", "Unit", "Reorder at"], low) }}{% endif %}
+{% endblock %}

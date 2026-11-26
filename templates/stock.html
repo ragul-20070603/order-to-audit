@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<div class="titlebar"><h1>Stock</h1>
+  <a class="btn" href="{{ url_for('report', key='stock_ledger') }}">Full stock ledger</a></div>
+<p class="muted">Balances are added up from the stock ledger every time this page loads. Nothing here is typed in.</p>
+{% for title, cols, rows in tables %}<h2>{{ title }}</h2>{{ m.table(cols, rows) }}{% endfor %}
+{% if can_edit %}
+<h2>Stock adjustment</h2>
+<form method="post" class="card">{{ m.csrf() }}
+  <div class="row">
+    <label>Item <select name="item">{% for i in items %}<option value="{{ i['id'] }}">{{ i['name'] }} ({{ i['unit'] }})</option>{% endfor %}</select></label>
+    <label>Direction <select name="dir"><option value="add">Add</option><option value="remove">Remove</option></select></label>
+    <label>Quantity <input name="qty" required inputmode="decimal"></label>
+    <label>Unit <select name="unit">{% for u in units %}<option>{{ u }}</option>{% endfor %}</select></label>
+    <label>Reason <input name="reason" required placeholder="e.g. physical count difference"></label>
+  </div>
+  <button>Post adjustment</button>
+</form>
+{% endif %}
+{% endblock %}

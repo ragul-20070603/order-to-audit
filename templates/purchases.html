@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% import "_m.html" as m with context %}
+{% block body %}
+<h1>Purchases</h1>
+{% if can_edit %}
+<form method="post" class="card">{{ m.csrf() }}
+  <div class="row">
+    <label>Supplier <select name="supplier">{% for s in suppliers %}<option value="{{ s['id'] }}">{{ s['name'] }}</option>{% endfor %}</select></label>
+    <label>Item <select name="item" id="item">{% for i in items %}<option value="{{ i['id'] }}" data-unit="{{ i['unit'] }}">{{ i['name'] }} ({{ i['unit'] }})</option>{% endfor %}</select></label>
+    <label>Quantity <input name="qty" required inputmode="decimal"></label>
+    <label>Unit <select name="unit" id="unit">{% for u in units %}<option>{{ u }}</option>{% endfor %}</select></label>
+    <label>Rate Rs per stock unit <input name="rate" required inputmode="decimal"></label>
+    <label>Bill / ref <input name="ref"></label>
+  </div>
+  <button class="primary">Record purchase</button>
+</form>
+<script>
+const item = document.getElementById("item"), unit = document.getElementById("unit");
+function sync() { unit.value = item.selectedOptions[0].dataset.unit; } item.onchange = sync; sync();
+</script>
+{% endif %}
+<h2>Recent purchases</h2>
+{{ m.table(cols, rows) }}
+{% endblock %}
